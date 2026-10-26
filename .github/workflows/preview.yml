@@ -63,7 +63,8 @@ jobs:
             fi
             if curl -sf -o /dev/null "http://localhost:8081/$page"; then
               shoot --viewport-size "1280, 800" "http://localhost:8081/$page" "shots/$name-after.png"
-              shoot --device "iPhone 13" "http://localhost:8081/$page" "shots/$name-mobile.png"
+              # Pixel 7 is a Chromium device profile; iPhone profiles need WebKit, which isn't installed.
+              shoot --device "Pixel 7" "http://localhost:8081/$page" "shots/$name-mobile.png"
             fi
           done
           ls -la shots
