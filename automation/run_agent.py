@@ -25,7 +25,7 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
-REPO = "rammanohar99/company-website"
+REPO = "rammanohar99/slack-to-website-agents"
 HERE = Path(__file__).resolve().parent
 TERMINAL_STATES = {"finished", "error", "stuck"}
 MAX_WAIT_SECONDS = 25 * 60
@@ -104,7 +104,7 @@ def start_conversation(role: str) -> str:
             },
             "secrets": saved_secrets(),
             "autotitle": False,
-            "tags": {"pipeline": "company-website", "role": role},
+            "tags": {"pipeline": "slack-to-website-agents", "role": role},
         },
     )
     return conversation["id"]
