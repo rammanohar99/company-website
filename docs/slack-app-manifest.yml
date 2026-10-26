@@ -1,0 +1,24 @@
+# Slack app for the website Intake agent.
+# Create it at https://api.slack.com/apps -> Create New App -> From a manifest -> paste this file.
+display_information:
+  name: Website Requests
+  description: Turns website change requests posted in Slack into tickets, and tells you when they're live.
+  background_color: "#2f6b4f"
+features:
+  bot_user:
+    display_name: website-bot
+    always_online: true
+oauth_config:
+  scopes:
+    bot:
+      - channels:history     # read messages in public channels the bot is in
+      - channels:read        # look up channel info
+      - groups:history       # same, for private channels
+      - chat:write           # reply in threads
+      - reactions:read       # see its own status reactions
+      - reactions:write      # add status reactions
+      - users:read           # requester's name for the ticket
+settings:
+  org_deploy_enabled: false
+  socket_mode_enabled: false
+  token_rotation_enabled: false
