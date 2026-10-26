@@ -43,6 +43,7 @@ jobs:
       REPO: ${{ github.repository }}
       SHA: ${{ github.sha }}
       PAGE_URL: ${{ needs.deploy.outputs.page_url }}
+      SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
     steps:
       - name: Tell the ticket author their change is live
         run: |
@@ -50,16 +51,19 @@ jobs:
           if [ -z "$pr" ]; then echo "Not a PR merge; nothing to notify."; exit 0; fi
 
           body=$(gh pr view "$pr" --repo "$REPO" --json body --jq .body)
-          issues=$(echo "$body" | grep -oiE '(close[sd]?|fix(e[sd])?|resolve[sd]?) #[0-9]+' | grep -oE '[0-9]+' | sort -u)
+          # `|| true`: the default shell uses pipefail, and grep exits 1 when nothing matches.
+          issues=$(echo "$body" | grep -oiE '(close[sd]?|fix(e[sd])?|resolve[sd]?) #[0-9]+' | grep -oE '[0-9]+' | sort -u || true)
           if [ -z "$issues" ]; then echo "PR #$pr links no ticket; nothing to notify."; exit 0; fi
 
           # Link straight to each changed page. ?v=<sha> skips the Pages CDN cache.
           v="${SHA:0:7}"
           pages=$(gh pr view "$pr" --repo "$REPO" --json files --jq '.files[].path' | sed -n 's#^site/\(.*\.html\)$#\1#p')
           links=""
+          slack_links=""
           for page in ${pages:-index.html}; do
             if [ "$page" = "index.html" ]; then url="${PAGE_URL}?v=$v"; else url="${PAGE_URL}${page}?v=$v"; fi
             links="${links}- [${page%.html}](${url})"$'\n'
+            slack_links="${slack_links}• <${url}|${page%.html}>"$'\n'
           done
 
           for issue in $issues; do
@@ -75,4 +79,16 @@ jobs:
               echo "Not quite right? Reply here or open a new request."
             } > comment.md
             gh issue comment "$issue" --repo "$REPO" --body-file comment.md
+
+            # Tickets created from Slack carry <!-- slack:<channel>:<ts> -->; reply in that thread too.
+            marker=$(gh issue view "$issue" --repo "$REPO" --json body --jq .body | grep -oE '<!-- slack:[A-Z0-9]+:[0-9]+\.[0-9]+ -->' | head -1 || true)
+            if [ -n "$marker" ] && [ -n "$SLACK_BOT_TOKEN" ]; then
+              channel=$(echo "$marker" | cut -d: -f2)
+              ts=$(echo "$marker" | cut -d: -f3 | cut -d' ' -f1)
+              text=$(printf '✅ *Your change is live!* (ticket #%s)\n%s\nIf you still see the old version, refresh the page. Not quite right? Reply here.' "$issue" "$slack_links")
+              jq -n --arg c "$channel" --arg t "$ts" --arg x "$text" '{channel: $c, thread_ts: $t, text: $x, unfurl_links: false}' \
+                | curl -s -X POST https://slack.com/api/chat.postMessage \
+                    -H "Authorization: Bearer $SLACK_BOT_TOKEN" -H "Content-Type: application/json; charset=utf-8" --data @- \
+                | jq -r 'if .ok then "Posted to Slack thread" else "Slack error: \(.error)" end'
+            fi
           done

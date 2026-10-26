@@ -1,9 +1,13 @@
 # Agent pipeline rules
 
 This repo is the website of Brightleaf Interiors (a fictional company). Change requests come from
-**non-technical people** through the "Website change request" form. Three automated agents (Builder,
-Reviewer, Merger) turn each request into a merged, deployed change and coordinate **only through
+**non-technical people**, either through the "Website change request" form or as messages in a Slack
+channel, which the **Intake** agent turns into tickets in the same format. Three more agents (Builder,
+Reviewer, Merger) turn each ticket into a merged, deployed change and coordinate **only through
 GitHub labels**. Every agent loads this file; follow it exactly.
+
+Tickets created from Slack end with a hidden line `<!-- slack:<channel>:<ts> -->`. Never remove or edit
+it: the Deploy workflow uses it to tell the requester in Slack that their change is live.
 
 ## Labels (the state machine)
 

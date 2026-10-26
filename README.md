@@ -38,9 +38,25 @@ asks one plain-language question on the ticket instead of guessing.
 
 ## Asking for a change
 
+**From Slack:** post in the website requests channel in your own words, e.g. *"Can we change our Saturday
+hours to 10 to 2?"* The **Intake agent** reads the channel every 15 minutes and reacts to each message:
+
+| Reaction | Meaning |
+|---|---|
+| 🎫 | A ticket was created; the link is in the thread |
+| ❓ | The agent asked a question in the thread; reply there |
+| 👀 | Seen, but not a website change request |
+
+When the change is live, you get a "✅ Your change is live!" reply in the same thread.
+
+**From GitHub:**
+
 1. Open **[Issues → New issue → Website change request](../../issues/new/choose)**.
 2. Pick the page and describe the change in your own words. Exact new wording helps.
 3. Wait for the "✅ Your change is live!" comment, usually within the hour.
+
+> Anyone in the Slack channel can request changes, because the Intake agent files tickets under the
+> maintainer's account. Keep the channel limited to people who are allowed to change the website.
 
 > **Who can request changes:** anyone can submit the form, but the agents only act on requests from
 > repository collaborators. Other requests are labelled `needs-triage` until a maintainer approves them
@@ -51,7 +67,7 @@ asks one plain-language question on the ticket instead of guessing.
 | Piece | File |
 |---|---|
 | Agent rules (labels, permissions, website rules) | [`AGENTS.md`](AGENTS.md) |
-| Agent instructions | [`.agents/prompts/`](.agents/prompts/) (builder, reviewer, merger) |
+| Agent instructions | [`.agents/prompts/`](.agents/prompts/) (intake, builder, reviewer, merger) |
 | Runner the scheduler executes for each agent | [`automation/run_agent.py`](automation/run_agent.py) |
 | Change request form | [`.github/ISSUE_TEMPLATE/website-change.yml`](.github/ISSUE_TEMPLATE/website-change.yml) |
 | HTML validation and link check | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) |

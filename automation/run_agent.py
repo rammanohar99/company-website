@@ -1,4 +1,4 @@
-"""Run one website pipeline role (builder / reviewer / merger) as an Agent Canvas conversation.
+"""Run one website pipeline role (intake / builder / reviewer / merger) as an Agent Canvas conversation.
 
 Standard library only, so an automation run starts in seconds instead of installing the SDK.
 
@@ -13,7 +13,7 @@ Env vars:
   AUTOMATION_CALLBACK_URL / AUTOMATION_CALLBACK_API_KEY / AUTOMATION_RUN_ID
                                 set by the automation service; used to report completion
 
-Usage: python run_agent.py <role>
+Usage: python run_agent.py intake|builder|reviewer|merger
 """
 
 import json
@@ -149,8 +149,8 @@ def report(success: bool, detail: str, conversation_id: str | None = None) -> No
 def main() -> int:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # agent replies contain non-ASCII
     role = sys.argv[1] if len(sys.argv) > 1 else ""
-    if role not in {"builder", "reviewer", "merger"}:
-        print("usage: run_agent.py builder|reviewer|merger")
+    if role not in {"intake", "builder", "reviewer", "merger"}:
+        print("usage: run_agent.py intake|builder|reviewer|merger")
         return 2
     try:
         conversation_id = start_conversation(role)
