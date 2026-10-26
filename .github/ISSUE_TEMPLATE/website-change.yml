@@ -1,0 +1,43 @@
+name: Website change request
+description: Ask for a change to the Brightleaf Interiors website. No technical knowledge needed.
+title: "Website change: "
+labels: ["agent:todo"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Tell us what you'd like changed, in your own words. Once it's live you'll get a notification
+        here with a link to the updated page, usually within the hour.
+  - type: dropdown
+    id: page
+    attributes:
+      label: Which page?
+      options:
+        - Home
+        - Services
+        - About
+        - Contact
+        - Every page (header or footer)
+        - A new page
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: change
+    attributes:
+      label: What should change?
+      description: Be as specific as you can. Exact new wording helps a lot.
+      placeholder: |
+        Example: On the Contact page, change our opening hours to "Monday to Friday, 9am to 6pm".
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Anything else we should know? (optional)
+      description: Why it's needed, a deadline, or a link to an example you like.
+  - type: textarea
+    id: attachments
+    attributes:
+      label: Screenshots or images (optional)
+      description: Drag images here. For new images on the site, attach the file you want used.

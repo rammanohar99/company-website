@@ -1,0 +1,114 @@
+name: Preview
+# Screenshots every page a PR changes (before = main, after = the PR) and posts them on the PR,
+# so the Reviewer agent and humans can see the change before it is merged.
+on:
+  pull_request:
+    paths: ["site/**"]
+
+permissions:
+  contents: write        # push screenshots to the pr-previews branch
+  pull-requests: write   # comment on the PR
+
+concurrency:
+  group: pr-previews     # serialize pushes to the shared pr-previews branch
+  cancel-in-progress: false
+
+jobs:
+  screenshots:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PR: ${{ github.event.pull_request.number }}
+      SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Chromium
+        run: npx --yes playwright@1.49.1 install --with-deps chromium
+
+      - name: Pick pages to capture
+        run: |
+          changed=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD" -- site/)
+          if echo "$changed" | grep -qvE '\.html$'; then
+            # A shared asset (CSS, image) changed, so every page may look different.
+            pages=$(cd site && ls *.html)
+          else
+            pages=$(echo "$changed" | sed -n 's#^site/##p')
+          fi
+          echo "Pages: $pages"
+          echo "PAGES=$(echo $pages)" >> "$GITHUB_ENV"
+
+      - name: Serve before (main) and after (PR)
+        run: |
+          git worktree add ../before "origin/${{ github.base_ref }}"
+          (cd site && python3 -m http.server 8081 >/dev/null 2>&1 &)
+          (cd ../before/site && python3 -m http.server 8080 >/dev/null 2>&1 &)
+          sleep 2
+
+      - name: Take screenshots
+        run: |
+          mkdir -p shots
+          shoot() { npx --yes playwright@1.49.1 screenshot --browser chromium --full-page --wait-for-timeout 500 "$@"; }
+          for page in $PAGES; do
+            name="${page%.html}"
+            if curl -sf -o /dev/null "http://localhost:8080/$page"; then
+              shoot --viewport-size "1280, 800" "http://localhost:8080/$page" "shots/$name-before.png"
+            fi
+            if curl -sf -o /dev/null "http://localhost:8081/$page"; then
+              shoot --viewport-size "1280, 800" "http://localhost:8081/$page" "shots/$name-after.png"
+              shoot --device "iPhone 13" "http://localhost:8081/$page" "shots/$name-mobile.png"
+            fi
+          done
+          ls -la shots
+
+      - name: Publish screenshots to the pr-previews branch
+        run: |
+          dest="pr-$PR/${SHA:0:7}"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --exit-code --heads origin pr-previews >/dev/null; then
+            git fetch origin pr-previews
+            git worktree add ../previews -B pr-previews origin/pr-previews
+          else
+            git worktree add --orphan -b pr-previews ../previews
+          fi
+          mkdir -p "../previews/$dest"
+          cp shots/*.png "../previews/$dest/"
+          cd ../previews
+          git add -A
+          git commit -m "Preview screenshots for PR #$PR at ${SHA:0:7}"
+          git push origin pr-previews
+          echo "DEST=$dest" >> "$GITHUB_ENV"
+
+      - name: Comment on the PR
+        run: |
+          base="https://raw.githubusercontent.com/${{ github.repository }}/pr-previews/$DEST"
+          {
+            echo "<!-- preview:${SHA} -->"
+            echo "### Preview for \`${SHA:0:7}\`"
+            echo
+            for page in $PAGES; do
+              name="${page%.html}"
+              echo "#### \`$page\`"
+              echo
+              echo "| Before (main) | After (this PR) | After, mobile |"
+              echo "|---|---|---|"
+              before="_new page_"
+              [ -f "shots/$name-before.png" ] && before="<img src=\"$base/$name-before.png\" width=\"360\">"
+              after="_page removed_"
+              mobile=""
+              [ -f "shots/$name-after.png" ] && after="<img src=\"$base/$name-after.png\" width=\"360\">"
+              [ -f "shots/$name-mobile.png" ] && mobile="<img src=\"$base/$name-mobile.png\" width=\"160\">"
+              echo "| $before | $after | $mobile |"
+              echo
+            done
+            echo "Raw files: \`$base/\`"
+          } > comment.md
+          gh pr comment "$PR" --body-file comment.md --edit-last --create-if-none

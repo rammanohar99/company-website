@@ -1,0 +1,31 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Validate HTML
+        run: npx --yes html-validate@8.18.2 "site/**/*.html"
+      - name: Check internal links
+        run: |
+          python3 - <<'PY'
+          import re, sys
+          from pathlib import Path
+          site = Path("site")
+          broken = []
+          for page in site.glob("**/*.html"):
+              for href in re.findall(r'(?:href|src)="([^"#?]+)', page.read_text(encoding="utf-8")):
+                  if re.match(r"^(https?:|mailto:|tel:|//)", href):
+                      continue
+                  if not (page.parent / href).exists():
+                      broken.append(f"{page}: {href}")
+          print("\n".join(broken) or "All internal links resolve.")
+          sys.exit(1 if broken else 0)
+          PY
